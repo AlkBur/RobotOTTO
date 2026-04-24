@@ -8,14 +8,16 @@
 
 struct ServoAction
 {
-	ServoController *servo;	  // указатель на объект серво
-	unsigned int targetAngle; // целевой угол 0-180
-	unsigned int startAngle;  // целевой угол 0-180
-	float speed;			  // градусов в секунду (0 = мгновенно)
-	bool wait;				  // ожидать завершения всех предыдущих
-	bool finished;			  // закончил выполняться
-	// int currentAngle;		  // текущий угол при выполнении (заполняется при активации)
-	unsigned long startTime; // время запуска движения (ms)
+	ServoController *servo;
+	unsigned int targetAngle;
+	unsigned int startAngle;
+	float speed;
+	bool wait;
+	bool finished;
+	unsigned long startTime;
+	unsigned long durationMs;
+	bool endless;
+	FootMotionProfile footProfile;
 };
 
 class SchedulerServo

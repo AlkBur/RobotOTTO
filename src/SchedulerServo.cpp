@@ -1,5 +1,20 @@
 #include "SchedulerServo.h"
 
+namespace
+{
+unsigned long calculateFootDurationMs(unsigned int targetAngle, float actualAngularSpeedDegPerSec)
+{
+	const float absSpeed = fabsf(actualAngularSpeedDegPerSec);
+	if (targetAngle == 0 || absSpeed <= 0.0f)
+	{
+		return 0;
+	}
+
+	const float durationMs = (static_cast<float>(targetAngle) / absSpeed) * 1000.0f;
+	return static_cast<unsigned long>(ceilf(durationMs));
+}
+} // namespace
+
 SchedulerServo::SchedulerServo() : _started(false)
 {
 	LOG_DEBUG("SchedulerServo", "Constructor called");
@@ -13,19 +28,58 @@ SchedulerServo::~SchedulerServo()
 
 void SchedulerServo::add(ServoController *servo, int targetAngle, float speed, bool wait)
 {
-	ServoAction act;
+	if (servo == nullptr)
+	{
+		LOG_WARNING("SchedulerServo", "add() skipped: servo=nullptr");
+		return;
+	}
+
+	ServoAction act{};
 	act.servo = servo;
-	act.startAngle = getServoAngle(servo); // фиксируем начальный угол СЕЙЧАС
-	act.targetAngle = constrain(targetAngle, 0, 180);
-	act.speed = speed;
 	act.wait = wait;
 	act.finished = false;
-	// act.currentAngle = act.startAngle; // текущий угол = начальному
 	act.startTime = 0;
-	_actions.push_back(act);
+	act.durationMs = 0;
+	act.endless = false;
+	act.footProfile = {0, 0.0f};
 
-	LOG_INFO("SchedulerServo", "add: servo=%p, startAngle=%d, target=%d, speed=%.1f, wait=%d",
-			 servo, act.startAngle, act.targetAngle, speed, wait);
+	if (servo->isFoot())
+	{
+		act.startAngle = 0;
+		act.targetAngle = static_cast<unsigned int>(max(targetAngle, 0));
+		act.speed = speed;
+		act.endless = (act.targetAngle == 0);
+
+		if (fabsf(speed) <= 0.0f)
+		{
+			LOG_WARNING("SchedulerServo", "add(): Foot requires non-zero speed, target=%u", act.targetAngle);
+			act.finished = true;
+		}
+		else if (!servo->selectFootProfile(speed, act.footProfile))
+		{
+			LOG_WARNING("SchedulerServo", "add(): Foot profile not found for speed %.1f", speed);
+			act.finished = true;
+		}
+		else if (!act.endless)
+		{
+			act.durationMs = calculateFootDurationMs(act.targetAngle, act.footProfile.angularSpeedDegPerSec);
+		}
+
+		LOG_INFO("SchedulerServo", "add Foot: servo=%p, angle=%u, requestedSpeed=%.1f, actualSpeed=%.1f, pulse=%u, duration=%lu, endless=%d, wait=%d",
+				 servo, act.targetAngle, speed, act.footProfile.angularSpeedDegPerSec, act.footProfile.pulse,
+				 act.durationMs, act.endless, wait);
+	}
+	else
+	{
+		act.startAngle = 0;
+		act.targetAngle = constrain(targetAngle, 0, 180);
+		act.speed = speed;
+
+		LOG_INFO("SchedulerServo", "add Leg: servo=%p, target=%d, speed=%.1f, wait=%d",
+				 servo, act.targetAngle, speed, wait);
+	}
+
+	_actions.push_back(act);
 }
 
 void SchedulerServo::start()
@@ -48,19 +102,19 @@ void SchedulerServo::update()
 		LOG_VERBOSE("SchedulerServo", "update() exited: _started=false");
 		return;
 	}
-	// LOG_INFO("SchedulerServo", "=== UPDATE ===");
 
-	unsigned long now = millis();
+	const unsigned long now = millis();
 	bool anyActive = false;
 
 	for (size_t i = 0; i < _actions.size(); ++i)
 	{
 		auto &act = _actions[i];
 		if (act.finished)
+		{
 			continue;
+		}
 		anyActive = true;
 
-		// Проверка ожидания
 		if (act.wait)
 		{
 			bool prevFinished = true;
@@ -79,39 +133,56 @@ void SchedulerServo::update()
 			}
 		}
 
-		// Первый запуск
 		if (act.startTime == 0)
 		{
 			act.startTime = now;
-			// act.currentAngle = act.startAngle;
-			LOG_DEBUG("SchedulerServo", "action[%d] start: startAngle=%d, target=%d, speed=%.1f",
-					  i, act.startAngle, act.targetAngle, act.speed);
+			if (act.servo->isFoot())
+			{
+				act.servo->setFootPulse(act.footProfile.pulse);
+				LOG_DEBUG("SchedulerServo", "action[%d] Foot start: pulse=%u, speed=%.1f, duration=%lu, endless=%d",
+						  i, act.footProfile.pulse, act.footProfile.angularSpeedDegPerSec, act.durationMs, act.endless);
+			}
+			else
+			{
+				act.startAngle = getServoAngle(act.servo);
+				LOG_DEBUG("SchedulerServo", "action[%d] Leg start: startAngle=%d, target=%d, speed=%.1f",
+						  i, act.startAngle, act.targetAngle, act.speed);
+			}
 		}
 
-		// Мгновенное действие
+		if (act.servo->isFoot())
+		{
+			if (act.endless)
+			{
+				continue;
+			}
+
+			const unsigned long elapsed = now - act.startTime;
+			if (elapsed >= act.durationMs)
+			{
+				act.servo->setStop();
+				act.finished = true;
+				LOG_INFO("SchedulerServo", "action[%d] Foot finished after %lu ms", i, elapsed);
+			}
+			continue;
+		}
+
 		if (act.speed <= 0)
 		{
 			act.servo->setAngle(act.targetAngle);
-			// act.currentAngle = act.targetAngle;
 			act.finished = true;
 			LOG_INFO("SchedulerServo", "action[%d] instant done -> angle %d", i, act.targetAngle);
 			continue;
 		}
 
-		// Плавное движение
-		int currentAngle = getServoAngle(act.servo);
-		int newAngle = getNewAngle(&act, now);
-		// LOG_DEBUG("SchedulerServo", "action[%d] newAngle=%d, current=%d, target=%d",
-		// 			i, newAngle, act.currentAngle, act.targetAngle);
+		const int currentAngle = getServoAngle(act.servo);
+		const int newAngle = getNewAngle(&act, now);
 		if (newAngle != currentAngle)
 		{
-
-			// act.currentAngle = newAngle;
 			act.servo->setAngle(newAngle);
 			LOG_DEBUG("SchedulerServo", "action[%d] setAngle: %d currentAngle: %d", i, newAngle, currentAngle);
 		}
 
-		// Завершение
 		if (newAngle == static_cast<int>(act.targetAngle))
 		{
 			act.finished = true;
@@ -119,10 +190,6 @@ void SchedulerServo::update()
 		}
 	}
 
-	// if (!anyActive && !_actions.empty())
-	// {
-	// 	LOG_DEBUG("SchedulerServo", "All actions finished");
-	// }
 	if (!anyActive && !_actions.empty())
 	{
 		_started = false;
@@ -135,6 +202,14 @@ void SchedulerServo::update()
 
 void SchedulerServo::stop()
 {
+	for (auto &act : _actions)
+	{
+		if (act.servo != nullptr && act.servo->isFoot())
+		{
+			act.servo->setStop();
+		}
+	}
+
 	_started = false;
 	_actions.clear();
 	LOG_INFO("SchedulerServo", "stop() called, cleared all actions");
@@ -152,7 +227,6 @@ bool SchedulerServo::isDone() const
 	return true;
 }
 
-// --- Адаптация под ваш класс серво (ServoController) ---
 void SchedulerServo::setServoAngle(ServoController *servo, int angle)
 {
 	servo->setAngle(angle);
@@ -170,19 +244,18 @@ int SchedulerServo::getNewAngle(const ServoAction *act, unsigned long now) const
 	if (act->speed <= 0)
 		return act->targetAngle;
 
-	int startAngle = constrain(static_cast<int>(act->startAngle), 0, 180);
-	int targetAngle = constrain(static_cast<int>(act->targetAngle), 0, 180);
+	const int startAngle = constrain(static_cast<int>(act->startAngle), 0, 180);
+	const int targetAngle = constrain(static_cast<int>(act->targetAngle), 0, 180);
 
 	if (startAngle == targetAngle)
 		return targetAngle;
 
-	int direction = (targetAngle > startAngle) ? 1 : -1;
-	unsigned long delta = now - act->startTime;
-	float traveledFloat = (delta / 1000.0f) * act->speed; // act->speed в градусах в секунду
-	int traveled = static_cast<int>(traveledFloat);
+	const int direction = (targetAngle > startAngle) ? 1 : -1;
+	const unsigned long delta = now - act->startTime;
+	const float traveledFloat = (delta / 1000.0f) * act->speed;
+	const int traveled = static_cast<int>(traveledFloat);
 	int newAngle = startAngle + direction * traveled;
 
-	// Ограничение целевым углом
 	if (direction == 1)
 	{
 		if (newAngle > targetAngle)

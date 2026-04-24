@@ -9,6 +9,12 @@ enum ServoType
 	SERVO_FOOT // стопа
 };
 
+struct FootMotionProfile
+{
+	uint16_t pulse;
+	float angularSpeedDegPerSec;
+};
+
 class ServoController
 {
 public:
@@ -22,10 +28,10 @@ public:
 					ServoType type, uint16_t minPulse = 150, uint16_t maxPulse = 600,
 					uint16_t minStopPulse = 0, uint16_t maxStopPulse = 0);
 
-	// Инициализация (ставит угол 90°)
+	// Инициализация
 	void begin();
 
-	// Установить угол (0-180°)
+	// Установить угол (0-180°) для позиционных сервоприводов
 	void setAngle(int angle);
 
 	// Получить текущий угол
@@ -33,19 +39,26 @@ public:
 
 	// Получить тип (leg/foot)
 	ServoType getType() const;
+	bool isFoot() const;
 
 	// Получить имя типа в виде строки
 	const char *getTypeName() const;
 
-	// Установить stop
+	// Остановить вращение стопы
 	void setStop();
-	// Установка скорости мотора (-255 .. 255)
-	// Положительное значение = одно направление, отрицательное = другое
+
+	// Установить точное PWM значение для стопы
+	void setFootPulse(uint16_t pulse);
+
+	// Подобрать профиль вращения стопы по измеренной угловой скорости
+	bool selectFootProfile(float requestedAngularSpeedDegPerSec, FootMotionProfile &profile) const;
+
+	// Установка скорости мотора (-100 .. 100)
 	void setSpeed(int speed);
 
 private:
-	Adafruit_PWMServoDriver &_pwmDriver; // Ссылка на драйвер
-	uint8_t _channel;					 // Канал PCA9685 (0-15)
+	Adafruit_PWMServoDriver &_pwmDriver;
+	uint8_t _channel;
 	ServoType _type;
 	uint16_t _minPulse;
 	uint16_t _maxPulse;
@@ -53,6 +66,5 @@ private:
 	uint16_t _minStopPulse;
 	uint16_t _maxStopPulse;
 
-	// Преобразование угла в длину импульса
 	uint16_t angleToPulse(int angle);
 };

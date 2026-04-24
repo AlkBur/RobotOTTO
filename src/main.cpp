@@ -143,15 +143,63 @@ void onWebSocketEvent(void *clientID, uint8_t type, const char *msg, size_t len)
 			if (moveId == 0)
 			{
 				scheduler.stop();
-				scheduler.add(&rightLeg, 135, 30.0f);
-				scheduler.add(&leftLeg, 135, 30.0f, true);
-				scheduler.add(&rightLeg, 90, 30.0f, true);
-				scheduler.add(&leftLeg, 0, 30.0f, true);
+				leftFoot.setStop();
+				rightFoot.setStop();
+				scheduler.add(&rightLeg, 90, 30.0f);
+				scheduler.add(&leftLeg, 90, 30.0f);
 				scheduler.start();
 			}
 			else if (moveId == 1)
 			{
 				eyes.nextMood(); // смена глаз
+			}
+			else if (moveId == 2)
+			{
+				scheduler.stop();
+				scheduler.add(&rightLeg, 135, 30.0f);
+				scheduler.add(&leftLeg, 135, 30.0f, true);
+				scheduler.add(&rightLeg, 90, 30.0f, true);
+				scheduler.add(&leftFoot, 0, 30.0f, true);
+				scheduler.start();
+			}
+			else if (moveId == 3)
+			{
+				scheduler.stop();
+
+				// Первый шаг
+				scheduler.add(&rightLeg, 135, 30.0f);
+				scheduler.add(&leftLeg, 135, 30.0f, true);
+				scheduler.add(&rightLeg, 90, 30.0f, true);
+				scheduler.add(&leftFoot, 45, -30.0f, true);
+
+				// Второй шаг
+				scheduler.add(&leftLeg, 40, 30.0f, true);
+				scheduler.add(&rightLeg, 45, 30.0f, true);
+				scheduler.add(&leftLeg, 90, 30.0f, true);
+				scheduler.add(&rightFoot, 90, 30.0f, true);
+
+				// Третий шаг
+				scheduler.add(&rightLeg, 135, 30.0f, true);
+				scheduler.add(&leftLeg, 135, 30.0f, true);
+				scheduler.add(&rightLeg, 90, 30.0f, true);
+				scheduler.add(&leftFoot, 90, -30.0f, true);
+
+				// Второй шаг
+				scheduler.add(&leftLeg, 40, 30.0f, true);
+				scheduler.add(&rightLeg, 45, 30.0f, true);
+				scheduler.add(&leftLeg, 90, 30.0f, true);
+				scheduler.add(&rightFoot, 90, 30.0f, true);
+
+				// Третий шаг (последний)
+				scheduler.add(&rightLeg, 135, 30.0f, true);
+				scheduler.add(&leftLeg, 135, 30.0f, true);
+				scheduler.add(&rightLeg, 90, 30.0f, true);
+				scheduler.add(&leftFoot, 45, -30.0f, true);
+
+				scheduler.add(&rightLeg, 90, 30.0f);
+				scheduler.add(&leftLeg, 90, 30.0f);
+
+				scheduler.start();
 			}
 
 			LOG_DEBUG("WEB", "moveId: %d", moveId);
