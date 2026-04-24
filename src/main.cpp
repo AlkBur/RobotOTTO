@@ -139,7 +139,21 @@ void onWebSocketEvent(void *clientID, uint8_t type, const char *msg, size_t len)
 		}
 		else if (msg[0] == 'M')
 		{
-			int moveId = msg[1] - '0';
+			int moveId = msg[1] - '0'; // 0 -крест, 1 - круг, 2 -квадрат, 3 - треугольник
+			if (moveId == 0)
+			{
+				scheduler.stop();
+				scheduler.add(&rightLeg, 135, 30.0f);
+				scheduler.add(&leftLeg, 135, 30.0f, true);
+				scheduler.add(&rightLeg, 90, 30.0f, true);
+				scheduler.add(&leftLeg, 0, 30.0f, true);
+				scheduler.start();
+			}
+			else if (moveId == 1)
+			{
+				eyes.nextMood(); // смена глаз
+			}
+
 			LOG_DEBUG("WEB", "moveId: %d", moveId);
 		}
 		else if (msg[0] == 'L')
@@ -170,12 +184,6 @@ void setup()
 	Serial.println("I2C initialized (SDA=0, SCL=3, 400kHz)");
 	delay(10);
 
-	if (initMp3Player())
-	{
-		mp3.play();
-	}
-	delay(10);
-
 	// Инициализация глаз
 	if (eyes.begin())
 	{
@@ -185,6 +193,13 @@ void setup()
 	{
 		LOG_ERROR("Main", "Eyes init failed");
 	}
+	delay(10);
+
+	if (initMp3Player())
+	{
+		mp3.play();
+	}
+	delay(10);
 
 	// Настройка (опционально)
 	eyes.setAutoMove(true);	 // автоматическое движение

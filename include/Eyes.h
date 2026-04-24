@@ -40,6 +40,24 @@ public:
 	// Установка режима циклопа
 	void setCyclopsMode(bool enable);
 
+	// Установка настроения (эмоции) по названию
+	void setMood(const char *mood);
+
+	// Установка настроения по индексу (0-5)
+	void setMood(uint8_t moodIndex);
+
+	// Следующее настроение (циклический перебор)
+	void nextMood();
+
+	// Предыдущее настроение
+	void previousMood();
+
+	// Получить текущее настроение
+	uint8_t getCurrentMood() const { return _currentMood; }
+
+	// Получить название текущего настроения
+	const char *getCurrentMoodName() const;
+
 private:
 	// TCA9548A
 	uint8_t _muxAddr;
@@ -61,14 +79,25 @@ private:
 	unsigned long _lastMoveTime;
 	unsigned long _lastBlinkTime;
 
+	// Текущая эмоция
+	uint8_t _currentMood;
+
 	// Константы
 	static constexpr int MOVE_INTERVAL_MS = 3000;
 	static constexpr int BLINK_INTERVAL_MS = 4000;
+
+	// Доступные настроения
+	static constexpr uint8_t MOOD_DEFAULT = 0;
+	static constexpr uint8_t MOOD_TIRED = 1;
+	static constexpr uint8_t MOOD_ANGRY = 2;
+	static constexpr uint8_t MOOD_HAPPY = 3;
+	static constexpr uint8_t MOOD_COUNT = 4;
 
 	// Вспомогательные методы
 	void _selectChannel(uint8_t channel);
 	void _updateAutoMove();
 	void _updateAutoBlink();
+	void _applyMood();
 };
 
 #endif

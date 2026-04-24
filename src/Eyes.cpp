@@ -19,7 +19,7 @@
 
 // Конструктор
 Eyes::Eyes(uint8_t multiplexerAddr, uint8_t left_channel, uint8_t right_channel)
-	: _muxAddr(multiplexerAddr), _left_channel(left_channel), _right_channel(right_channel), _displayLeft(128, 64, &Wire, -1), _displayRight(128, 64, &Wire, -1), _eyeLeft(nullptr), _eyeRight(nullptr), _initialized(false), _autoMove(true), _autoBlink(true), _lastMoveTime(0), _lastBlinkTime(0)
+	: _muxAddr(multiplexerAddr), _left_channel(left_channel), _right_channel(right_channel), _displayLeft(128, 64, &Wire, -1), _displayRight(128, 64, &Wire, -1), _eyeLeft(nullptr), _eyeRight(nullptr), _initialized(false), _autoMove(true), _autoBlink(true), _lastMoveTime(0), _lastBlinkTime(0), _currentMood(MOOD_DEFAULT)
 {
 }
 
@@ -237,4 +237,111 @@ void Eyes::_updateAutoBlink()
 
 		LOG_VERBOSE("Eyes", "Blink");
 	}
+}
+
+// Установка настроения по названию
+void Eyes::setMood(const char *mood)
+{
+	if (!_initialized)
+		return;
+
+	if (strcmp(mood, "tired") == 0)
+	{
+		_currentMood = MOOD_TIRED;
+	}
+	else if (strcmp(mood, "angry") == 0)
+	{
+		_currentMood = MOOD_ANGRY;
+	}
+	else if (strcmp(mood, "happy") == 0)
+	{
+		_currentMood = MOOD_HAPPY;
+	}
+	else
+	{
+		_currentMood = MOOD_DEFAULT;
+	}
+
+	_applyMood();
+}
+
+// Установка настроения по индексу
+void Eyes::setMood(uint8_t moodIndex)
+{
+	if (!_initialized)
+		return;
+
+	if (moodIndex >= MOOD_COUNT)
+	{
+		moodIndex = MOOD_DEFAULT;
+	}
+
+	_currentMood = moodIndex;
+	_applyMood();
+}
+
+// Следующее настроение
+void Eyes::nextMood()
+{
+	if (!_initialized)
+		return;
+
+	_currentMood++;
+	if (_currentMood >= MOOD_COUNT)
+	{
+		_currentMood = 0;
+	}
+
+	_applyMood();
+	LOG_DEBUG("Eyes", "Mood changed to: %s", getCurrentMoodName());
+}
+
+// Предыдущее настроение
+void Eyes::previousMood()
+{
+	if (!_initialized)
+		return;
+
+	if (_currentMood == 0)
+	{
+		_currentMood = MOOD_COUNT - 1;
+	}
+	else
+	{
+		_currentMood--;
+	}
+
+	_applyMood();
+	LOG_DEBUG("Eyes", "Mood changed to: %s", getCurrentMoodName());
+}
+
+// Получить название текущего настроения
+const char *Eyes::getCurrentMoodName() const
+{
+	switch (_currentMood)
+	{
+	case MOOD_HAPPY:
+		return "happy";
+	case MOOD_ANGRY:
+		return "angry";
+	case MOOD_TIRED:
+		return "tired";
+	default:
+		return "default";
+	}
+}
+
+// Применить текущее настроение к глазам
+void Eyes::_applyMood()
+{
+	// Используем значения напрямую из библиотеки
+	uint8_t libraryMood = _currentMood;
+
+	_selectChannel(_left_channel);
+	_eyeLeft->setMood(libraryMood);
+
+	_selectChannel(_right_channel);
+	_eyeRight->setMood(libraryMood);
+
+	LOG_VERBOSE("Eyes", "Applied mood: %s (code: %d)", getCurrentMoodName(), libraryMood);
 }

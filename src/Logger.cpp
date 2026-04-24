@@ -6,8 +6,8 @@ LogLevel Logger::_level = LOG_LEVEL_INFO;
 void Logger::begin(unsigned long baudRate)
 {
 	Serial.begin(baudRate);
-	while (!Serial)
-		delay(10);
+	// while (!Serial)
+	// 	delay(10);
 	LOG_INFO("Logger", "Logger initialized");
 }
 
