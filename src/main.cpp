@@ -32,6 +32,8 @@ ServoController rightFoot(pwmDriver, 8, SERVO_FOOT, 257, 335, 279, 312);
 
 SchedulerServo scheduler;
 
+#define speed 60.00f
+
 namespace
 {
 	constexpr uint8_t kDefaultMp3Volume = 10;
@@ -89,16 +91,16 @@ void onWebSocketEvent(void *clientID, uint8_t type, const char *msg, size_t len)
 			{
 				LOG_DEBUG("WEB", "D-Pad: %c", dir);
 				scheduler.stop();
-				scheduler.add(&leftLeg, 180, 30.0f);
-				scheduler.add(&rightLeg, 0, 30.0f);
+				scheduler.add(&leftLeg, 180, speed);
+				scheduler.add(&rightLeg, 0, speed);
 				scheduler.start();
 			}
 			else if (pressed && dir == 'D')
 			{
 				LOG_DEBUG("WEB", "D-Pad: %c", dir);
 				scheduler.stop();
-				scheduler.add(&leftLeg, 90, 30.0f);
-				scheduler.add(&rightLeg, 90, 30.0f);
+				scheduler.add(&leftLeg, 90, speed);
+				scheduler.add(&rightLeg, 90, speed);
 				scheduler.start();
 			}
 		}
@@ -145,8 +147,8 @@ void onWebSocketEvent(void *clientID, uint8_t type, const char *msg, size_t len)
 				scheduler.stop();
 				leftFoot.setStop();
 				rightFoot.setStop();
-				scheduler.add(&rightLeg, 90, 30.0f);
-				scheduler.add(&leftLeg, 90, 30.0f);
+				scheduler.add(&rightLeg, 90, speed);
+				scheduler.add(&leftLeg, 90, speed);
 				scheduler.start();
 			}
 			else if (moveId == 1)
@@ -156,10 +158,10 @@ void onWebSocketEvent(void *clientID, uint8_t type, const char *msg, size_t len)
 			else if (moveId == 2)
 			{
 				scheduler.stop();
-				scheduler.add(&rightLeg, 135, 30.0f);
-				scheduler.add(&leftLeg, 135, 30.0f, true);
-				scheduler.add(&rightLeg, 90, 30.0f, true);
-				scheduler.add(&leftFoot, 0, 30.0f, true);
+				scheduler.add(&rightLeg, 135, speed);
+				scheduler.add(&leftLeg, 135, speed, true);
+				scheduler.add(&rightLeg, 90, speed, true);
+				scheduler.add(&leftFoot, 0, speed, true);
 				scheduler.start();
 			}
 			else if (moveId == 3)
@@ -167,37 +169,38 @@ void onWebSocketEvent(void *clientID, uint8_t type, const char *msg, size_t len)
 				scheduler.stop();
 
 				// Первый шаг
-				scheduler.add(&rightLeg, 135, 30.0f);
-				scheduler.add(&leftLeg, 135, 30.0f, true);
-				scheduler.add(&rightLeg, 90, 30.0f, true);
-				scheduler.add(&leftFoot, 45, -30.0f, true);
+				scheduler.add(&rightLeg, 135, speed);
+				scheduler.add(&leftLeg, 135, speed, true);
+				scheduler.add(&rightLeg, 90, speed, true);
+				scheduler.add(&leftFoot, 45, -speed, true);
 
 				// Второй шаг
-				scheduler.add(&leftLeg, 40, 30.0f, true);
-				scheduler.add(&rightLeg, 45, 30.0f, true);
-				scheduler.add(&leftLeg, 90, 30.0f, true);
-				scheduler.add(&rightFoot, 90, 30.0f, true);
+				scheduler.add(&leftLeg, 40, speed, true);
+				scheduler.add(&rightLeg, 45, speed, true);
+				scheduler.add(&leftLeg, 90, speed, true);
+				scheduler.add(&rightFoot, 90, speed, true);
 
 				// Третий шаг
-				scheduler.add(&rightLeg, 135, 30.0f, true);
-				scheduler.add(&leftLeg, 135, 30.0f, true);
-				scheduler.add(&rightLeg, 90, 30.0f, true);
-				scheduler.add(&leftFoot, 90, -30.0f, true);
+				scheduler.add(&rightLeg, 135, speed, true);
+				scheduler.add(&leftLeg, 135, speed, true);
+				scheduler.add(&rightLeg, 90, speed, true);
+				scheduler.add(&leftFoot, 90, -speed, true);
 
-				// Второй шаг
-				scheduler.add(&leftLeg, 40, 30.0f, true);
-				scheduler.add(&rightLeg, 45, 30.0f, true);
-				scheduler.add(&leftLeg, 90, 30.0f, true);
-				scheduler.add(&rightFoot, 90, 30.0f, true);
+				// чеивериый шаг
+				scheduler.add(&leftLeg, 40, speed, true);
+				scheduler.add(&rightLeg, 45, speed, true);
+				scheduler.add(&leftLeg, 90, speed, true);
+				scheduler.add(&rightFoot, 90, speed, true);
 
-				// Третий шаг (последний)
-				scheduler.add(&rightLeg, 135, 30.0f, true);
-				scheduler.add(&leftLeg, 135, 30.0f, true);
-				scheduler.add(&rightLeg, 90, 30.0f, true);
-				scheduler.add(&leftFoot, 45, -30.0f, true);
+				// пятый шаг (последний)
+				scheduler.add(&rightLeg, 135, speed, true);
+				scheduler.add(&leftLeg, 135, speed, true);
+				scheduler.add(&rightLeg, 90, speed, true);
+				scheduler.add(&leftFoot, 45, -speed, true);
 
-				scheduler.add(&rightLeg, 90, 30.0f);
-				scheduler.add(&leftLeg, 90, 30.0f);
+				// Базовая поза
+				scheduler.add(&rightLeg, 90, speed, true);
+				scheduler.add(&leftLeg, 90, speed, true);
 
 				scheduler.start();
 			}
@@ -245,7 +248,7 @@ void setup()
 
 	if (initMp3Player())
 	{
-		mp3.play();
+		// mp3.play();
 	}
 	delay(10);
 

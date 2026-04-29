@@ -3,77 +3,95 @@
 
 namespace
 {
-struct FootCalibrationEntry
-{
-	uint16_t pulse;
-	float angularSpeedDegPerSec;
-};
-
-constexpr FootCalibrationEntry kLeftFootBackwardProfiles[] = {
-	{257, 140.0f},
-	{264, 110.0f},
-	{272, 75.0f},
-	{278, 18.0f},
-};
-
-constexpr FootCalibrationEntry kLeftFootForwardProfiles[] = {
-	{314, 8.0f},
-	{322, 89.0f},
-	{329, 187.0f},
-	{337, 205.0f},
-};
-
-constexpr FootCalibrationEntry kRightFootBackwardProfiles[] = {
-	{257, 230.0f},
-	{264, 173.0f},
-	{272, 75.0f},
-	{278, 18.0f},
-};
-
-constexpr FootCalibrationEntry kRightFootForwardProfiles[] = {
-	{312, 8.0f},
-	{320, 53.0f},
-	{327, 189.0f},
-	{335, 208.0f},
-};
-
-bool findClosestProfile(const FootCalibrationEntry *profiles, size_t count, float requestedAbsSpeed, FootMotionProfile &profile)
-{
-	if (profiles == nullptr || count == 0 || requestedAbsSpeed <= 0.0f)
+	struct FootCalibrationEntry
 	{
-		return false;
-	}
+		uint16_t pulse;
+		float angularSpeedDegPerSec;
+	};
 
-	bool foundCeil = false;
-	FootCalibrationEntry selected = profiles[0];
-	FootCalibrationEntry maxProfile = profiles[0];
+	constexpr FootCalibrationEntry kLeftFootBackwardProfiles[] = {
+		{257, 140.0f},
+		{264, 110.0f},
+		{272, 75.0f},
+		{275, 60.0f},
+		{278, 18.0f},
+	};
 
-	for (size_t i = 0; i < count; ++i)
+	constexpr FootCalibrationEntry kLeftFootForwardProfiles[] = {
+		// {314, 8.0f},
+		// {322, 89.0f},
+		// {329, 187.0f},
+		// {337, 205.0f},
+		{314, 8.0f},
+		{316, 15.0f}, // добавлено
+		{318, 25.0f}, // добавлено
+		{320, 35.0f}, // добавлено
+		{322, 89.0f},
+		{325, 120.0f}, // добавлено
+		{329, 187.0f},
+		{333, 195.0f}, // добавлено
+		{337, 205.0f},
+	};
+
+	constexpr FootCalibrationEntry kRightFootBackwardProfiles[] = {
+		{257, 230.0f},
+		{264, 173.0f},
+		{272, 75.0f},
+		{276, 60.0f},
+		{278, 18.0f},
+	};
+
+	constexpr FootCalibrationEntry kRightFootForwardProfiles[] = {
+		{312, 8.0f},
+		{314, 20.0f}, // добавить
+		{316, 35.0f}, // добавлено
+		{318, 45.0f}, // добавлено
+		{320, 53.0f},
+		{321, 60.0f},  // ← новый профиль для 60°/sec
+		{323, 90.0f},  // добавлено
+		{325, 130.0f}, // добавлено
+		{327, 189.0f},
+		{331, 200.0f}, // добавлено
+		{335, 208.0f},
+	};
+
+	bool findClosestProfile(const FootCalibrationEntry *profiles, size_t count, float requestedAbsSpeed, FootMotionProfile &profile)
 	{
-		if (profiles[i].angularSpeedDegPerSec > maxProfile.angularSpeedDegPerSec)
+		if (profiles == nullptr || count == 0 || requestedAbsSpeed <= 0.0f)
 		{
-			maxProfile = profiles[i];
+			return false;
 		}
 
-		if (profiles[i].angularSpeedDegPerSec >= requestedAbsSpeed)
+		bool foundCeil = false;
+		FootCalibrationEntry selected = profiles[0];
+		FootCalibrationEntry maxProfile = profiles[0];
+
+		for (size_t i = 0; i < count; ++i)
 		{
-			if (!foundCeil || profiles[i].angularSpeedDegPerSec < selected.angularSpeedDegPerSec)
+			if (profiles[i].angularSpeedDegPerSec > maxProfile.angularSpeedDegPerSec)
 			{
-				selected = profiles[i];
-				foundCeil = true;
+				maxProfile = profiles[i];
+			}
+
+			if (profiles[i].angularSpeedDegPerSec >= requestedAbsSpeed)
+			{
+				if (!foundCeil || profiles[i].angularSpeedDegPerSec < selected.angularSpeedDegPerSec)
+				{
+					selected = profiles[i];
+					foundCeil = true;
+				}
 			}
 		}
-	}
 
-	if (!foundCeil)
-	{
-		selected = maxProfile;
-	}
+		if (!foundCeil)
+		{
+			selected = maxProfile;
+		}
 
-	profile.pulse = selected.pulse;
-	profile.angularSpeedDegPerSec = selected.angularSpeedDegPerSec;
-	return true;
-}
+		profile.pulse = selected.pulse;
+		profile.angularSpeedDegPerSec = selected.angularSpeedDegPerSec;
+		return true;
+	}
 } // namespace
 
 ServoController::ServoController(Adafruit_PWMServoDriver &pwmDriver, uint8_t channel,
